@@ -4,6 +4,7 @@ site_url: https://yjangout.github.io/opd-wiki/
 repo_url: https://github.com/yjangout/opd-wiki
 repo_name: yjangout/opd-wiki
 edit_uri: edit/main/docs/
+copyright: 文字内容采用 <a href="https://creativecommons.org/licenses/by/4.0/deed.zh-hans">CC BY 4.0</a>，代码采用 <a href="https://github.com/yjangout/opd-wiki/blob/main/LICENSE">MIT</a> 许可
 
 theme:
   name: material

@@ -47,6 +47,13 @@ docs/
 
 交互演示的源码在 `opd_explainer/`，换样本后重新生成，再复制到 `docs/demo/opd-step.html`。
 
+## 许可
+
+- 文字内容（`docs/`）：[CC BY 4.0](https://creativecommons.org/licenses/by/4.0/)，见 [LICENSE-CONTENT](LICENSE-CONTENT)
+- 代码（`opd_explainer/`、配置文件、文中的代码片段）：[MIT](LICENSE)
+
+转载或改编时注明出处即可，包括商业用途。
+
 ## 内容约定
 
 - ✅：数字或结论已对照一手资料（原论文、官方博客、官方文档）核实；

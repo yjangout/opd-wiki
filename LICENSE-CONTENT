@@ -1,0 +1,18 @@
+Copyright (c) 2026 yjangout
+
+The written content of this repository -- everything under docs/ except the
+code samples, scripts and configuration it contains -- is licensed under the
+Creative Commons Attribution 4.0 International License (CC BY 4.0).
+
+You are free to share and adapt the material for any purpose, including
+commercially, as long as you give appropriate credit, provide a link to the
+license, and indicate if changes were made.
+
+Full license text: https://creativecommons.org/licenses/by/4.0/legalcode
+Summary:           https://creativecommons.org/licenses/by/4.0/
+
+Code (opd_explainer/, configuration files, workflow files and the code samples
+inside the docs) is licensed under the MIT License; see LICENSE.
+
+Third-party material referenced or quoted in the wiki (paper results, dataset
+samples, framework documentation) remains under its original license.

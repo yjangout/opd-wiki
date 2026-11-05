@@ -32,6 +32,13 @@ OPD 发展很快，本站一定有遗漏和错误。欢迎：
 
 ## 许可
 
-<!-- 待定。公开前在这里写明许可协议，例如 CC BY 4.0（内容）+ MIT（代码）。 -->
+| 内容 | 协议 |
+|---|---|
+| 文字（`docs/` 下的教程正文、表格、图示） | [CC BY 4.0](https://creativecommons.org/licenses/by/4.0/deed.zh-hans) |
+| 代码（`opd_explainer/`、配置文件、文中的代码片段） | [MIT](https://github.com/yjangout/opd-wiki/blob/main/LICENSE) |
 
-许可协议待定。
+按 CC BY 4.0，你可以自由转载、改编，包括商业用途，只需注明出处（OPD Wiki，附上本站链接）并说明是否做了修改。
+
+wiki 里引用的第三方内容（论文结果、数据集样本、框架文档）仍按其原始协议使用。
+
+提交到本仓库的贡献，默认按上述同样的协议授权。
