@@ -1,0 +1,135 @@
+site_name: OPD Wiki
+site_description: On-Policy Distillation（在线策略蒸馏）中文教程：原理、实战、框架、工业案例与前沿
+site_url: https://yjangout.github.io/opd-wiki/
+repo_url: https://github.com/yjangout/opd-wiki
+repo_name: yjangout/opd-wiki
+edit_uri: edit/main/docs/
+
+theme:
+  name: material
+  language: zh
+  features:
+    - navigation.tabs
+    - navigation.sections
+    - navigation.indexes
+    - navigation.top
+    - navigation.footer
+    - toc.follow
+    - search.suggest
+    - search.highlight
+    - content.code.copy
+    - content.tabs.link
+    - content.action.edit
+  palette:
+    - media: "(prefers-color-scheme: light)"
+      scheme: default
+      primary: indigo
+      accent: amber
+      toggle:
+        icon: material/weather-night
+        name: 切换到深色模式
+    - media: "(prefers-color-scheme: dark)"
+      scheme: slate
+      primary: indigo
+      accent: amber
+      toggle:
+        icon: material/weather-sunny
+        name: 切换到浅色模式
+
+plugins:
+  - search:
+      lang: zh
+
+markdown_extensions:
+  - abbr
+  - admonition
+  - attr_list
+  - def_list
+  - footnotes
+  - md_in_html
+  - tables
+  - toc:
+      permalink: true
+      slugify: !!python/object/apply:pymdownx.slugs.slugify
+        kwds:
+          case: lower
+  - pymdownx.arithmatex:
+      generic: true
+  - pymdownx.details
+  - pymdownx.highlight:
+      anchor_linenums: true
+  - pymdownx.inlinehilite
+  - pymdownx.superfences:
+      custom_fences:
+        - name: mermaid
+          class: mermaid
+          format: !!python/name:pymdownx.superfences.fence_code_format
+  - pymdownx.tabbed:
+      alternate_style: true
+  - pymdownx.tasklist:
+      custom_checkbox: true
+
+extra_javascript:
+  - javascripts/mathjax.js
+  - https://cdn.jsdelivr.net/npm/mathjax@3.2.2/es5/tex-mml-chtml.js
+
+extra_css:
+  - stylesheets/extra.css
+
+nav:
+  - 首页: index.md
+  - 基础:
+      - basics/index.md
+      - SFT 与 off-policy 蒸馏: basics/sft.md
+      - RL 与 GRPO: basics/grpo.md
+      - 为什么需要 OPD: basics/why-opd.md
+      - 三种方法的数据长什么样: basics/data-formats.md
+  - 原理:
+      - theory/index.md
+      - 目标函数与梯度: theory/objective.md
+      - 散度怎么选: theory/divergence.md
+      - 估计粒度：sampled-token、top-K、全词表: theory/estimators.md
+      - OPD 何时有效、何时失效: theory/mechanism.md
+  - 实践:
+      - practice/index.md
+      - 标准配方: practice/recipe.md
+      - 教师怎么选: practice/teacher.md
+      - 数据与 prompt: practice/data.md
+      - 监控与诊断: practice/monitoring.md
+      - 踩坑大全: practice/pitfalls.md
+      - 算力与硬件规划: practice/compute.md
+  - 框架:
+      - frameworks/index.md
+      - verl: frameworks/verl.md
+      - verl 源码走读：一个 OPD step: frameworks/verl-walkthrough.md
+      - ms-swift: frameworks/ms-swift.md
+      - TRL: frameworks/trl.md
+      - slime 与 Tinker: frameworks/others.md
+      - 工程优化: frameworks/infra.md
+  - 动手教程:
+      - tutorial/index.md
+      - L1 SFT 与 off-policy 蒸馏: tutorial/l1-sft.md
+      - L2 GRPO: tutorial/l2-grpo.md
+      - L3 OPD: tutorial/l3-opd.md
+      - L4 Agentic RL: tutorial/l4-agentic.md
+  - 工业案例:
+      - cases/index.md
+      - Thinking Machines: cases/thinking-machines.md
+      - Qwen3: cases/qwen3.md
+      - DeepSeek-V4: cases/deepseek-v4.md
+      - MiMo-V2-Flash: cases/mimo.md
+      - 更多案例: cases/more.md
+  - 变体与前沿:
+      - frontier/index.md
+      - Agentic OPD: frontier/agentic.md
+      - 多教师 OPD: frontier/multi-teacher.md
+      - 自蒸馏: frontier/self-distillation.md
+      - 黑盒教师: frontier/black-box.md
+      - 效率优化: frontier/efficiency.md
+      - 新场景: frontier/new-domains.md
+      - 开放问题: frontier/open-problems.md
+  - 附录:
+      - FAQ: appendix/faq.md
+      - 术语表: appendix/glossary.md
+      - 参考文献: appendix/references.md
+      - 关于本站: appendix/about.md

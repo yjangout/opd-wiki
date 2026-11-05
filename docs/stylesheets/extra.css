@@ -1,0 +1,16 @@
+/* 表格在窄屏下横向滚动，不撑破页面 */
+.md-typeset__table {
+  overflow-x: auto;
+}
+
+/* 可信度标记 */
+.md-typeset .verified { color: #2e7d32; font-weight: 600; }
+.md-typeset .unverified { color: #ef6c00; font-weight: 600; }
+
+/* 嵌入的交互演示 */
+.demo-frame {
+  width: 100%;
+  aspect-ratio: 16 / 10;
+  border: 1px solid var(--md-default-fg-color--lightest);
+  border-radius: 8px;
+}

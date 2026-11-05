@@ -1,0 +1,438 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8">
+<title>verl OPD：一个训练 step 里教师在做什么</title>
+<style>
+  :root {
+    --bg: #0f1420; --panel: #171e2e; --line: #2a3550; --text: #e6ebf5; --dim: #8a96b0;
+    --stu: #4fb3ff; --tea: #ffb547; --pos: #ff5d6c; --neg: #4fd18b; --prompt: #6b7a99; --code: #0b0f18;
+  }
+  * { box-sizing: border-box; }
+  html, body { margin: 0; height: 100%; background: #05070c; color: var(--text);
+    font-family: "PingFang SC", "Hiragino Sans GB", "Microsoft YaHei", "Noto Sans CJK SC", system-ui, sans-serif; }
+  #wrap { position: fixed; inset: 0 0 64px 0; display: flex; align-items: center; justify-content: center; overflow: hidden; }
+  #stage { width: 1280px; height: 720px; background: var(--bg); position: relative; transform-origin: center; border-radius: 10px;
+    box-shadow: 0 0 0 1px var(--line); overflow: hidden; }
+  .scene { position: absolute; inset: 0; padding: 36px 48px 110px; display: none; }
+  .scene.active { display: block; }
+  h1 { font-size: 30px; margin: 0 0 6px; font-weight: 700; }
+  h1 small { font-size: 16px; color: var(--dim); font-weight: 400; margin-left: 12px; }
+  .sub { position: absolute; left: 48px; right: 48px; bottom: 22px; min-height: 64px; font-size: 19px; line-height: 1.6;
+    background: rgba(5,7,12,.75); border: 1px solid var(--line); border-radius: 8px; padding: 10px 16px; }
+  [data-at] { opacity: 0; transform: translateY(10px); transition: opacity .5s, transform .5s; }
+  [data-at].on { opacity: 1; transform: none; }
+  code, pre, .mono { font-family: "JetBrains Mono", "SF Mono", Menlo, Consolas, monospace; }
+  pre { background: var(--code); border: 1px solid var(--line); border-radius: 8px; padding: 14px 16px; font-size: 15px; line-height: 1.55; margin: 0; white-space: pre-wrap; }
+  .k { color: #c792ea; } .s { color: #c3e88d; } .n { color: #f78c6c; } .c { color: #697098; } .f { color: #82aaff; }
+  .hl { background: rgba(255,181,71,.18); outline: 1px solid var(--tea); border-radius: 3px; }
+  .box { background: var(--panel); border: 1px solid var(--line); border-radius: 10px; padding: 14px 16px; }
+  .tag { display: inline-block; font-size: 13px; padding: 1px 8px; border-radius: 10px; border: 1px solid currentColor; margin-right: 6px; }
+  .stu { color: var(--stu); } .tea { color: var(--tea); } .pos { color: var(--pos); } .neg { color: var(--neg); } .dim { color: var(--dim); }
+  .chips { display: flex; flex-wrap: wrap; gap: 3px; font-family: Menlo, Consolas, monospace; font-size: 13px; }
+  .chip { padding: 1px 4px; border-radius: 3px; background: #222b40; white-space: pre; cursor: default; }
+  .chip.p { background: #1d2436; color: var(--prompt); }
+  .chip.hide { visibility: hidden; }
+  .chip.sel { outline: 2px solid #fff; }
+  .row { display: flex; gap: 20px; }
+  /* controls */
+  #ctl { position: fixed; left: 0; right: 0; bottom: 0; height: 64px; background: #0b0f18; border-top: 1px solid var(--line);
+    display: flex; align-items: center; gap: 12px; padding: 0 18px; }
+  #ctl button { background: #1c2438; color: var(--text); border: 1px solid var(--line); border-radius: 6px; padding: 7px 14px; font-size: 15px; cursor: pointer; }
+  #ctl button:hover { border-color: var(--stu); }
+  #bar { flex: 1; display: flex; gap: 4px; height: 26px; align-items: center; }
+  .seg { flex: 1; height: 8px; background: #222b40; border-radius: 4px; position: relative; cursor: pointer; overflow: hidden; }
+  .seg i { position: absolute; inset: 0; width: 0; background: var(--stu); }
+  .seg:hover { background: #2d3854; }
+  #label { min-width: 240px; font-size: 14px; color: var(--dim); text-align: right; }
+  /* scene specific */
+  .node { position: absolute; border-radius: 12px; border: 2px solid; padding: 14px 16px; background: var(--panel); }
+  .arrow { position: absolute; font-size: 15px; color: var(--text); }
+  .arrow b { display: inline-block; width: 24px; height: 24px; line-height: 24px; text-align: center; border-radius: 50%; background: #2a3550; margin-right: 6px; font-size: 13px; }
+  .align { border-collapse: collapse; font-family: Menlo, Consolas, monospace; font-size: 14px; }
+  .align td { border: 1px solid var(--line); padding: 6px 8px; text-align: center; min-width: 86px; }
+  .align td.h { color: var(--dim); text-align: right; border: none; font-family: inherit; min-width: 150px; }
+  .bars div { display: flex; align-items: center; gap: 6px; font-size: 13px; height: 22px; }
+  .bars span.lab { width: 92px; text-align: right; font-family: Menlo, Consolas, monospace; white-space: pre; overflow: hidden; }
+  .bars span.b { height: 14px; border-radius: 3px; }
+  .bars .act { font-weight: 700; color: #fff; }
+  .card { width: 380px; }
+  .big { font-size: 22px; }
+</style>
+</head>
+<body>
+<div id="wrap"><div id="stage"></div></div>
+<div id="ctl">
+  <button id="prev">◀ 上一步</button>
+  <button id="play">▶ 播放</button>
+  <button id="next">下一步 ▶</button>
+  <button id="speed">1x</button>
+  <div id="bar"></div>
+  <div id="label"></div>
+</div>
+<script>
+const D = /*__DATA__*/null;
+const P = D.P, R = D.R;
+const resp = D.response;
+const k1 = resp.map(r => r.s - r.t);
+const vis = s => s.replace(/\n/g, '↵').replace(/ /g, '·');
+const esc = s => s.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
+const ev = s => esc(vis(s));
+const fmt = (x, n = 2) => (x >= 0 ? '+' : '') + x.toFixed(n);
+const seqTok = k => k < P ? D.prompt[k] : resp[k - P];
+// teacher logprob of seq[k+1] given seq[0..k]
+const teaNext = k => k + 1 < P ? D.prompt[k + 1].t : resp[k + 1 - P].t;
+const k1Color = v => {
+  const a = Math.min(Math.abs(v) / 6, 1);
+  return v >= 0 ? `rgba(255,93,108,${0.12 + 0.8 * a})` : `rgba(79,209,139,${0.12 + 0.8 * a})`;
+};
+const stats = (() => {
+  const mean = k1.reduce((a, b) => a + b, 0) / R;
+  const near0 = k1.filter(v => Math.abs(v) < 0.1).length;
+  const big = k1.filter(v => v > 2).length;
+  const order = [...k1.keys()].sort((a, b) => Math.abs(k1[b]) - Math.abs(k1[a]));
+  return { mean, near0, big, order };
+})();
+const pick = (() => {
+  // featured tokens: two largest-k1 spikes + first token where teacher and student top-1 differ
+  const spikes = stats.order.filter(j => k1[j] > 0).slice(0, 2).sort((a, b) => a - b);
+  const disagree = resp.findIndex((r, j) => !spikes.includes(j) && r.tT[0][0] !== r.sT[0][0]);
+  return [...spikes, disagree].filter(j => j >= 0);
+})();
+const ctx = (j, n = 7) => resp.slice(Math.max(0, j - n), j).map(r => r.text).join('');
+
+const S = [];
+
+/* ---------- 1. overview ---------- */
+S.push({
+  title: '总览', dur: 18,
+  html: `
+  <h1>一个 OPD 训练 step <small>学生 Qwen3.5-4B ← 教师 Qwen3.8-27B · gsm8k · 本次冒烟测试的真实配置</small></h1>
+  <div class="node" style="left:60px;top:120px;width:400px;border-color:var(--stu)">
+    <div class="big stu">GPU1 · 学生 Qwen3.5-4B</div>
+    <div style="margin-top:8px;line-height:1.8">vLLM rollout（采样回答）<br>FSDP2 训练（算 logprob、反向传播）<br><span class="dim">两者分时共用这张卡</span></div>
+  </div>
+  <div class="node" style="left:800px;top:120px;width:400px;border-color:var(--tea)">
+    <div class="big tea">GPU2 · 教师 Qwen3.8-27B</div>
+    <div style="margin-top:8px;line-height:1.8">只有一个 vLLM 推理服务<br>不训练、不生成文本<br><span class="dim">只做 prefill，返回 logprob</span></div>
+  </div>
+  <div class="arrow" data-at="1.5" style="left:480px;top:140px">── <b>②</b>prompt + 学生回答的 token id ──▶</div>
+  <div class="arrow" data-at="3" style="left:480px;top:220px">◀── <b>③</b>每个位置的教师 logprob ──</div>
+  <div class="box" style="position:absolute;left:60px;top:340px;width:1140px">
+    <div data-at="0.5"><b>①</b> 学生 vLLM 对 16 道题各采样 1 条回答，并记录每个 token 的 logprob</div>
+    <div data-at="1.5" style="margin-top:10px"><b>②</b> 把 prompt_ids + response_ids 原样拼起来，发给教师</div>
+    <div data-at="3" style="margin-top:10px"><b>③</b> 教师 prefill 一次，返回「每个位置上，实际那个 token 的 logprob」</div>
+    <div data-at="5" style="margin-top:10px"><b>④</b> 逐 token 算 k1 = log π<sub>学生</sub> − log π<sub>教师</sub>，取负号当作 advantage</div>
+    <div data-at="7" style="margin-top:10px"><b>⑤</b> 用 PPO 的 policy gradient 更新学生 &nbsp; <b>⑥</b> 新权重同步回学生 vLLM，进入下一个 step</div>
+  </div>`,
+  sub: [[0, '每个 step 分六步。学生和教师各占一张卡，教师只负责给学生的回答「打分」：每个 token 一个 logprob。'],
+        [9, '接下来用这次实验抓到的一条真实样本，一步步看数据长什么样。']],
+});
+
+/* ---------- 2. rollout ---------- */
+S.push({
+  title: '① Rollout', dur: 18,
+  html: `
+  <h1>① 学生 vLLM 采样回答 <small>来源：${esc(D.source)}</small></h1>
+  <div class="box" style="margin-top:12px">
+    <div class="dim" style="margin-bottom:6px">prompt（chat template 之后，${P} 个 token）</div>
+    <div class="chips" id="r-prompt"></div>
+  </div>
+  <div class="box" style="margin-top:12px">
+    <div style="margin-bottom:6px"><span class="stu">学生生成的回答</span> <span class="dim mono" id="r-count"></span></div>
+    <div class="chips" id="r-resp"></div>
+  </div>
+  <div data-at="13" class="box" style="margin-top:12px;font-size:16px">
+    答案 #### 20 正确，奖励 = ${D.score}。<span class="dim">本实验 use_task_rewards=False，这个奖励只记录、不参与训练。</span>
+  </div>`,
+  build(el) {
+    el.querySelector('#r-prompt').innerHTML = D.prompt.map(t => `<span class="chip p">${ev(t.text)}</span>`).join('');
+    el.querySelector('#r-resp').innerHTML = resp.map(t => `<span class="chip hide">${ev(t.text)}</span>`).join('');
+    this.chips = [...el.querySelectorAll('#r-resp .chip')];
+    this.cnt = el.querySelector('#r-count');
+  },
+  update(t) {
+    const n = Math.max(0, Math.min(R, Math.floor((t - 2) / 9 * R)));
+    this.chips.forEach((c, i) => c.classList.toggle('hide', i >= n));
+    this.cnt.textContent = `${n} / ${R} tokens`;
+  },
+  sub: [[0, '灰色是 prompt：题目加上 Qwen3.5 的 chat template，关掉了 thinking，所以末尾是一对空的 <think></think>。'],
+        [2, '学生 vLLM 逐个采样 token。每采一个，同时记下它的 logprob，也就是 rollout_log_probs。'],
+        [12, `这条回答一共 ${R} 个 token。注意，到这里教师还没参与。`]],
+});
+
+/* ---------- 3. concat ---------- */
+S.push({
+  title: '② 拼接', dur: 15,
+  html: `
+  <h1>② 拼成教师的输入 <small>agent_loop.py:1079</small></h1>
+  <pre style="margin-top:14px" data-at="0"><span class="f">compute_teacher_logprobs_single</span>(sequence_ids=<span class="hl">prompt_ids + response_ids</span>)</pre>
+  <div class="box mono" style="margin-top:18px;font-size:15px;line-height:2">
+    <div data-at="1"><span class="dim">prompt_ids   </span> [${D.prompt.slice(0, 6).map(t => t.id).join(', ')}, …, ${D.prompt.slice(-4).map(t => t.id).join(', ')}] <span class="dim">长度 ${P}</span></div>
+    <div data-at="2.5"><span class="stu">response_ids </span> [${resp.slice(0, 6).map(t => t.id).join(', ')}, …, ${resp.slice(-3).map(t => t.id).join(', ')}] <span class="dim">长度 ${R}</span></div>
+    <div data-at="4" class="tea">sequence_ids  长度 ${P} + ${R} = ${P + R}</div>
+  </div>
+  <div class="row" style="margin-top:18px">
+    <div class="box" data-at="6" style="flex:1;line-height:1.8">
+      拼的是 <b>token id</b>，不是文本。<br>不会 detokenize 再重新 tokenize，所以教师看到的 token 和学生生成时一个都不差。
+    </div>
+    <div class="box" data-at="8" style="flex:1;line-height:1.8">
+      不加 system prompt，不加任何额外说明。<br>教师看到的上文就是学生看到的上文，它只需要回答：<br><i>「换成我，在这个位置会给这个 token 多大概率？」</i>
+    </div>
+  </div>`,
+  sub: [[0, '学生生成完，把 prompt 的 token id 和回答的 token id 直接首尾相接。'],
+        [6, '用 id 拼接保证了对齐：教师和学生对同一个位置的理解完全一致，两个模型词表相同才能这样做。']],
+});
+
+/* ---------- 4. request ---------- */
+S.push({
+  title: '③ 请求教师', dur: 20,
+  html: `
+  <h1>③ 调用的是哪个接口 <small>不是 HTTP，是 Ray actor 里直接调 vLLM 引擎</small></h1>
+  <pre style="margin-top:14px" data-at="0"><span class="c"># teacher_manager.py:129  通过 Ray 远程调用发到 GPU2 上的 vLLMHttpServer actor</span>
+<span class="k">await</span> client.<span class="f">generate</span>(prompt_ids=sequence_ids, sampling_params={
+    <span class="s">"max_tokens"</span>: <span class="n">1</span>, <span class="s">"temperature"</span>: <span class="n">1.0</span>, <span class="hl"><span class="s">"prompt_logprobs"</span>: <span class="n">0</span></span>, <span class="s">"detokenize"</span>: <span class="k">False</span>})</pre>
+  <pre style="margin-top:12px" data-at="3"><span class="c"># vllm_async_server.py:705  进程内调用 vLLM AsyncLLM，没有经过 /v1/completions</span>
+self.engine.<span class="f">generate</span>(TokensPrompt(prompt_token_ids=[${D.prompt.slice(0, 4).map(t => t.id).join(', ')}, …  共 ${P + R} 个]),
+                     SamplingParams(max_tokens=<span class="n">1</span>, prompt_logprobs=<span class="n">0</span>, …))</pre>
+  <div class="row" style="margin-top:14px">
+    <div class="box" data-at="7" style="flex:1;line-height:1.7">
+      <b class="tea">prompt_logprobs</b>：让 vLLM 把「输入序列里每个 token 的 logprob」一起返回。<br>
+      <b class="tea">max_tokens=1</b>：vLLM 至少要生成 1 个 token，生成的这个直接丢弃。
+    </div>
+    <div class="box" data-at="11" style="flex:1;line-height:1.7;border-color:var(--pos)">
+      <b class="pos">为什么是 0 而不是 64？</b> k1 属于单样本估计类 loss（use_topk=False），<br>
+      代码里 <code>num_logprobs = topk if use_topk else 0</code>，只要实际 token 那一个值。<br>
+      <span class="dim">topk=64 只对 forward_kl_topk 这类 loss 生效。</span>
+    </div>
+  </div>`,
+  sub: [[0, '教师侧调用的是 vLLM 引擎的 generate，但只要它在 prefill 时顺手算出的 prompt_logprobs。'],
+        [7, '所以教师的工作量就是一次 prefill，没有逐 token 的 decode，这也是 27B 教师单卡就够用的原因。'],
+        [11, '这里纠正我之前的说法：本实验用的是 k1，教师实际收到的是 prompt_logprobs=0，返回形状是 [序列长度, 1]。']],
+});
+
+/* ---------- 5. alignment ---------- */
+S.push({
+  title: '③ 对齐', dur: 20,
+  html: `
+  <h1>③ 教师返回什么：位置 i 预测第 i+1 个 token <small>vllm_rollout/utils.py:517</small></h1>
+  <div class="box" style="margin-top:14px;overflow:hidden"><table class="align" id="al"></table></div>
+  <div class="row" style="margin-top:16px">
+    <div class="box" data-at="6" style="flex:1;line-height:1.8">
+      teacher_logprobs[i] = log π<sub>教师</sub>( x<sub>i+1</sub> | x<sub>0</sub> … x<sub>i</sub> )<br>
+      第 0 个 token 没有上文，vLLM 返回 None，verl 丢掉；末尾补一个 0 凑齐长度。
+    </div>
+    <div class="box" data-at="10" style="flex:1;line-height:1.8">
+      回答的第 j 个 token 对应下标 <b>P − 1 + j</b>（这里 P = ${P}）。<br>
+      训练时只取回答部分 ${R} 个值，prompt 部分的值算出来但不用。
+    </div>
+  </div>`,
+  build(el) {
+    const ks = []; for (let k = P - 4; k <= P + 4; k++) ks.push(k);
+    const row = (h, cells, at) => `<tr ${at != null ? `data-at="${at}"` : ''}><td class="h">${h}</td>${cells.join('')}</tr>`;
+    el.querySelector('#al').innerHTML =
+      row('下标 i', ks.map(k => `<td class="dim">${k}${k === P - 1 ? '<br><span class="stu">=P−1</span>' : ''}</td>`), 0) +
+      row('输入 x<sub>i</sub>', ks.map(k => `<td class="${k < P ? 'dim' : 'stu'}">${ev(seqTok(k).text)}</td>`), 1) +
+      row('预测目标 x<sub>i+1</sub>', ks.map(k => `<td class="${k + 1 < P ? 'dim' : 'stu'}">↗ ${ev(seqTok(k + 1).text)}</td>`), 3) +
+      row('<span class="tea">teacher_logprobs[i]</span>', ks.map(k => `<td class="tea">${teaNext(k).toFixed(3)}</td>`), 5);
+  },
+  sub: [[0, '这张表截取了 prompt 和回答交界处的 9 个位置。第二行是输入的 token。'],
+        [3, '模型在位置 i 输出的是对下一个 token 的预测，所以教师在位置 i 给出的是 x 下标 i+1 那个 token 的 logprob。'],
+        [10, `从下标 P−1=${P - 1} 开始，预测目标落到学生的回答上，这些才是蒸馏要用的值。`]],
+});
+
+/* ---------- 6. per-token k1 ---------- */
+S.push({
+  title: '④ 逐 token 对比', dur: 24,
+  html: `
+  <h1>④ 逐 token 对比学生和教师 <small>颜色 = k1 = log π<sub>学生</sub> − log π<sub>教师</sub></small></h1>
+  <div class="row" style="margin-top:10px">
+    <div style="flex:1">
+      <div class="box"><div class="chips" id="k-chips" style="font-size:13px"></div></div>
+      <div class="box" style="margin-top:10px;padding:8px 12px">
+        <svg id="k-svg" width="760" height="120"></svg>
+      </div>
+    </div>
+    <div class="box" style="width:360px;font-size:15px;line-height:1.7" id="k-detail"></div>
+  </div>`,
+  build(el) {
+    el.querySelector('#k-chips').innerHTML = resp.map((r, j) =>
+      `<span class="chip" data-j="${j}" style="background:${k1Color(k1[j])}">${ev(r.text)}</span>`).join('');
+    this.chips = [...el.querySelectorAll('#k-chips .chip')];
+    const svg = el.querySelector('#k-svg'), W = 760, H = 120, mid = 60, sc = 50 / 10, bw = W / R;
+    let s = `<line x1="0" y1="${mid}" x2="${W}" y2="${mid}" stroke="#3a4766"/>`;
+    s += `<text x="4" y="12" fill="#ff5d6c" font-size="11">k1 &gt; 0：学生比教师更自信 → 压低</text>`;
+    s += `<text x="4" y="116" fill="#4fd18b" font-size="11">k1 &lt; 0：教师比学生更看好 → 抬高</text>`;
+    resp.forEach((r, j) => {
+      const v = Math.max(-10, Math.min(10, k1[j])), h = Math.abs(v) * sc;
+      s += `<rect class="kb" data-j="${j}" x="${j * bw}" y="${v >= 0 ? mid - h : mid}" width="${Math.max(bw - 0.5, 1)}" height="${Math.max(h, 0.5)}" fill="${v >= 0 ? '#ff5d6c' : '#4fd18b'}" opacity="0"/>`;
+    });
+    svg.innerHTML = s;
+    this.rects = [...svg.querySelectorAll('.kb')];
+    this.detail = el.querySelector('#k-detail');
+    this.hover = null;
+    const onHover = e => { const j = e.target.dataset && e.target.dataset.j; if (j != null) { this.hover = +j; this.show(+j); } };
+    el.querySelector('#k-chips').addEventListener('mouseover', onHover);
+    svg.addEventListener('mouseover', onHover);
+    this.shown = -2;
+  },
+  show(j) {
+    if (j === this.shown) return; this.shown = j;
+    this.chips.forEach((c, i) => c.classList.toggle('sel', i === j));
+    if (j < 0) {
+      this.detail.innerHTML = `<b>整条回答 ${R} 个 token</b><br>
+        k1 平均 ${fmt(stats.mean, 3)}<br>
+        |k1| &lt; 0.1 的 token：<b>${stats.near0}</b> 个（${(100 * stats.near0 / R).toFixed(0)}%），两边基本一致<br>
+        k1 &gt; 2 的 token：<b class="pos">${stats.big}</b> 个，信号集中在这里<br><br>
+        <span class="dim">鼠标移到 token 或柱子上可以看单个位置。</span>`;
+      return;
+    }
+    const r = resp[j];
+    this.detail.innerHTML = `<div class="dim">回答第 ${j} 个 token（下标 ${P - 1 + j}）</div>
+      <div class="big mono" style="margin:4px 0">「${ev(r.text)}」</div>
+      <span class="stu">学生 logprob</span> ${r.s.toFixed(3)} <span class="dim">(p=${Math.exp(r.s).toFixed(3)})</span><br>
+      <span class="tea">教师 logprob</span> ${r.t.toFixed(3)} <span class="dim">(p=${Math.exp(r.t).toFixed(4)})</span><br>
+      k1 = <b class="${k1[j] >= 0 ? 'pos' : 'neg'}">${fmt(k1[j], 3)}</b><br><br>
+      <span class="tea">教师 top-1</span>：<span class="mono">「${ev(r.tT[0][0])}」</span> p=${Math.exp(r.tT[0][1]).toFixed(3)}<br>
+      <span class="stu">学生 top-1</span>：<span class="mono">「${ev(r.sT[0][0])}」</span> p=${Math.exp(r.sT[0][1]).toFixed(3)}`;
+  },
+  update(t) {
+    const n = Math.max(0, Math.min(R, Math.floor((t - 1) / 6 * R)));
+    this.rects.forEach((rc, i) => rc.setAttribute('opacity', i < n ? 1 : 0));
+    if (this.hover != null) return;
+    if (t < 9) this.show(-1);
+    else { const seq = stats.order.slice(0, 4); this.show(seq[Math.min(seq.length - 1, Math.floor((t - 9) / 3.5))]); }
+  },
+  sub: [[0, '每个 token 按 k1 上色：红色是学生比教师自信，绿色是教师比学生更看好，颜色越深差得越多。'],
+        [8, `大部分 token 几乎是白的，两个模型看法一致。信号集中在少数几个位置，右边轮流展示 |k1| 最大的 4 个。`],
+        [17, '这条样本里，k1 最大的几个位置都是措辞选择，比如用 let 还是 we，而不是数字算错。']],
+});
+
+/* ---------- 7. zoom ---------- */
+S.push({
+  title: '④ 放大看', dur: 22,
+  html: `
+  <h1>④ 放大三个位置 <small>top-5 是为讲解额外请求的；训练时 k1 只用实际 token 那一个值</small></h1>
+  <div class="row" id="z-cards" style="margin-top:14px"></div>`,
+  build(el) {
+    const bars = (list, actual, color) => list.map(([tk, lp]) => {
+      const p = Math.exp(lp);
+      return `<div><span class="lab ${tk === actual ? 'act' : ''}">${ev(tk)}</span>
+        <span class="b" style="width:${Math.max(2, p * 200)}px;background:${color};opacity:${tk === actual ? 1 : .55}"></span>
+        <span class="dim">${p < 0.001 ? p.toExponential(1) : p.toFixed(3)}</span></div>`;
+    }).join('');
+    el.querySelector('#z-cards').innerHTML = pick.map((j, n) => {
+      const r = resp[j];
+      return `<div class="box card" data-at="${n * 5 + 0.5}">
+        <div class="dim mono" style="font-size:13px;white-space:pre-wrap">…${ev(ctx(j))}<span class="hl">${ev(r.text)}</span></div>
+        <div style="margin:8px 0">实际采样：<b class="mono">「${ev(r.text)}」</b> &nbsp; k1 = <b class="${k1[j] >= 0 ? 'pos' : 'neg'}">${fmt(k1[j])}</b></div>
+        <div class="stu" style="font-size:14px">学生 top-5</div><div class="bars">${bars(r.sT, r.text, 'var(--stu)')}</div>
+        <div class="tea" style="font-size:14px;margin-top:6px">教师 top-5</div><div class="bars">${bars(r.tT, r.text, 'var(--tea)')}</div>
+      </div>`;
+    }).join('');
+  },
+  sub: [[0, '左边两个是 k1 最大的位置：教师给实际 token 的概率只有万分之一左右，学生却给了不小的概率。'],
+        [10, '右边这个位置，学生和教师的首选不同，但学生的选择在教师那里也有一定概率，所以 k1 不大。'],
+        [16, 'k1 只看实际采样的那个 token：教师觉得它越不可能，惩罚越大。教师更喜欢的其他词，只能靠以后被采样到再强化。']],
+});
+
+/* ---------- 8. loss ---------- */
+const j0 = pick[0], j1 = pick[pick.length - 1];
+S.push({
+  title: '⑤ 变成梯度', dur: 22,
+  html: `
+  <h1>⑤ k1 怎么变成梯度 <small>distillation/losses.py · use_policy_gradient=True</small></h1>
+  <div class="box" style="margin-top:14px;font-size:19px;line-height:2.1">
+    <div data-at="0.5">k1<sub>j</sub> = log π<sub>θ</sub>(y<sub>j</sub>) − log π<sub>教师</sub>(y<sub>j</sub>) <span class="dim" style="font-size:15px">π<sub>θ</sub> 用 FSDP 重新前向得到，不是 rollout 时记下的值</span></div>
+    <div data-at="3">k1<sub>j</sub> 裁剪到 [−10, 10] <span class="dim" style="font-size:15px">loss_max_clamp=10</span></div>
+    <div data-at="5">A<sub>j</sub> = − k1<sub>j</sub> <span class="dim" style="font-size:15px">detach，当作每个 token 自己的 advantage</span></div>
+    <div data-at="7">L = PPO-clip( π<sub>θ</sub>/π<sub>old</sub>, A<sub>j</sub> )，按 token 平均 <span class="dim" style="font-size:15px">π<sub>old</sub> 来自 old_log_prob 阶段</span></div>
+  </div>
+  <div class="row" style="margin-top:16px">
+    <div class="box" data-at="10" style="flex:1;font-size:16px;line-height:1.8">
+      <b class="mono">「${ev(resp[j0].text)}」</b>：k1 = ${fmt(k1[j0])} → A = <b class="pos">${fmt(-k1[j0])}</b><br>压低这个 token 的概率
+    </div>
+    <div class="box" data-at="12" style="flex:1;font-size:16px;line-height:1.8">
+      <b class="mono">「${ev(resp[j1].text)}」</b>：k1 = ${fmt(k1[j1])} → A = <b class="${-k1[j1] >= 0 ? 'neg' : 'pos'}">${fmt(-k1[j1])}</b><br>${k1[j1] > 0 ? '轻微压低' : '抬高这个 token 的概率'}
+    </div>
+    <div class="box" data-at="14" style="flex:1;font-size:16px;line-height:1.8">
+      k1 ≈ 0 的 token：A ≈ 0<br>几乎不产生梯度
+    </div>
+  </div>`,
+  sub: [[0, '训练端拿到教师的 logprob 后，先用 FSDP 重新算一遍学生的 logprob，然后逐 token 相减得到 k1。'],
+        [5, '为什么不直接对 k1 反向传播？k1 对参数的梯度和教师无关，所以 verl 要求 k1 必须配 policy gradient 用。'],
+        [10, '把负的 k1 当作每个 token 的 advantage：学生比教师自信的 token 被压低，反过来的被抬高。']],
+});
+
+/* ---------- 9. timing ---------- */
+S.push({
+  title: '⑥ 同步与耗时', dur: 18,
+  html: `
+  <h1>⑥ 更新、同步，进入下一个 step <small>冒烟测试 step 5 的 timing_s</small></h1>
+  <div class="box" style="margin-top:14px" id="t-bars"></div>
+  <div class="box" data-at="8" style="margin-top:16px;font-size:17px;line-height:1.9">
+    教师 prefill 和学生采样是流式进行的，耗时算在 gen 里：一条回答生成完就立刻发给教师，不等整个 batch。<br>
+    最慢的是 old_log_prob 和 update_actor，原因是参数和优化器都 offload 到了 CPU。
+  </div>`,
+  build(el) {
+    const T = [['gen（学生采样 + 教师 prefill）', 6.24, 'var(--stu)'], ['old_log_prob（FSDP 前向）', 13.59, '#8a7dff'],
+               ['update_actor（反向 + 优化器）', 18.69, 'var(--pos)'], ['update_weights（同步到 vLLM）', 2.23, 'var(--neg)']];
+    el.querySelector('#t-bars').innerHTML = T.map(([n, v, c], i) => `<div data-at="${i * 1.2 + 0.5}" style="display:flex;align-items:center;gap:12px;height:40px">
+        <span style="width:300px;text-align:right">${n}</span>
+        <span style="height:22px;width:${v * 32}px;background:${c};border-radius:4px"></span><span class="mono">${v.toFixed(1)}s</span></div>`).join('')
+      + `<div data-at="5.5" style="margin-top:6px;padding-left:312px" class="dim">整个 step 40.8s</div>`;
+  },
+  sub: [[0, '算完梯度、更新完参数，新权重同步到学生的 vLLM，下一个 step 用更新后的学生重新采样。'],
+        [8, '这就是 on-policy：教师永远在给学生当前版本自己写出来的回答打分。']],
+});
+
+/* ---------- player ---------- */
+const stage = document.getElementById('stage');
+S.forEach((sc, i) => {
+  const el = document.createElement('div'); el.className = 'scene'; el.innerHTML = sc.html + '<div class="sub"></div>';
+  stage.appendChild(el); sc.el = el; sc.subEl = el.querySelector('.sub'); sc.ats = [...el.querySelectorAll('[data-at]')];
+  if (sc.build) sc.build(el);
+});
+const bar = document.getElementById('bar');
+S.forEach((sc, i) => { const s = document.createElement('div'); s.className = 'seg'; s.title = sc.title; s.innerHTML = '<i></i>'; s.onclick = () => go(i); bar.appendChild(s); });
+const segs = [...bar.querySelectorAll('.seg i')];
+let cur = 0, t = 0, playing = false, speed = 1, last = null;
+const SPEEDS = [1, 1.5, 2];
+function go(i) {
+  cur = Math.max(0, Math.min(S.length - 1, i)); t = 0;
+  S.forEach((sc, k) => sc.el.classList.toggle('active', k === cur));
+  const sc = S[cur]; if (sc.hover !== undefined) { sc.hover = null; sc.shown = -2; }
+  render();
+}
+function render() {
+  const sc = S[cur];
+  sc.ats.forEach(e => e.classList.toggle('on', t >= +e.dataset.at));
+  let line = ''; sc.sub.forEach(([at, s]) => { if (t >= at) line = s; }); sc.subEl.textContent = line;
+  if (sc.update) sc.update(t);
+  segs.forEach((g, k) => g.style.width = (k < cur ? 100 : k > cur ? 0 : Math.min(100, 100 * t / sc.dur)) + '%');
+  document.getElementById('label').textContent = `${cur + 1}/${S.length} · ${sc.title}`;
+}
+function tick(now) {
+  if (last != null && playing) {
+    t += (now - last) / 1000 * speed;
+    if (t >= S[cur].dur) { if (cur < S.length - 1) go(cur + 1); else { t = S[cur].dur; setPlay(false); } }
+    render();
+  }
+  last = now; requestAnimationFrame(tick);
+}
+function setPlay(p) { playing = p; document.getElementById('play').textContent = p ? '⏸ 暂停' : '▶ 播放'; }
+document.getElementById('play').onclick = () => { if (!playing && cur === S.length - 1 && t >= S[cur].dur) go(0); setPlay(!playing); };
+document.getElementById('prev').onclick = () => go(t > 1.5 ? cur : cur - 1);
+document.getElementById('next').onclick = () => go(cur + 1);
+document.getElementById('speed').onclick = e => { speed = SPEEDS[(SPEEDS.indexOf(speed) + 1) % SPEEDS.length]; e.target.textContent = speed + 'x'; };
+document.addEventListener('keydown', e => {
+  if (e.code === 'Space') { e.preventDefault(); document.getElementById('play').click(); }
+  if (e.code === 'ArrowRight') go(cur + 1);
+  if (e.code === 'ArrowLeft') go(cur - 1);
+});
+function fit() { const w = innerWidth, h = innerHeight - 64; stage.style.transform = `scale(${Math.min(w / 1280, h / 720) * 0.97})`; }
+addEventListener('resize', fit); fit();
+go(0); requestAnimationFrame(tick);
+</script>
+</body>
+</html>
