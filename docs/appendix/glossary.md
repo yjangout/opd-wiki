@@ -40,7 +40,8 @@
 | **privilege illusion** | 学生学到了依赖特权信息、推理时却无法复现的行为 |
 | **GAD** | 生成对抗蒸馏：用判别器的打分代替黑盒教师的 logits |
 | **Semi-OPD** | 只用初始学生的 rollout，教师 logprob 只算一次，反复复用 |
-| **长度暴涨**（length inflation） | 训练中回答长度突然暴涨，被截断的轨迹主导训练（truncation collapse） |
+| **长度暴涨**（length inflation） | 训练中回答长度突然暴涨，被截断的轨迹主导训练（truncation collapse），见[长度暴涨与熵坍缩](../evaluation/concepts.md) |
+| **熵坍缩**（entropy collapse） | 训练中模型熵迅速掉到接近 0，同一道题几乎总给出同一个回答，见[长度暴涨与熵坍缩](../evaluation/concepts.md) |
 | **局部可教性塌缩**（local teachability collapse） | 轨迹后段的教师信号失去区分度 |
 | **容量差距**（capacity gap） | 教师和学生差距太大，学生吸收不了教师的信号 |
 | **exploration black hole** | 学生起点弱时，压低错误 token 却抬不起正确 token |

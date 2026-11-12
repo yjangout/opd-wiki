@@ -129,6 +129,10 @@ nav:
       - 效率优化: frontier/efficiency.md
       - 新场景: frontier/new-domains.md
       - 开放问题: frontier/open-problems.md
+  - 模型评测:
+      - evaluation/index.md
+      - 三个评测集先看整体区别: evaluation/benchmarks.md
+      - 长度暴涨与熵坍缩: evaluation/concepts.md
   - 附录:
       - FAQ: appendix/faq.md
       - 术语表: appendix/glossary.md
