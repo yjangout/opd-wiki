@@ -85,6 +85,7 @@ nav:
       - RL 与 GRPO: basics/grpo.md
       - 为什么需要 OPD: basics/why-opd.md
       - 三种方法的数据长什么样: basics/data-formats.md
+      - Agentic RL 与 OPD: basics/agentic-rl-vs-opd.md
   - 原理:
       - theory/index.md
       - 目标函数与梯度: theory/objective.md

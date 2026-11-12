@@ -1,7 +1,7 @@
 # L4 Agentic RL
 
 !!! note "Agentic RL 不等于 OPD"
-    Agentic RL 是**问题设定**：训练智能体在环境里多轮行动，目标是把任务做成。OPD 是**训练信号**：教师逐 token 打分。两者可以组合（Agentic OPD），但不能互相替代。平时说的 Agentic RL 大多指用环境的结果奖励训练；OPD 进入智能体领域是比较新的方向。
+    Agentic RL 是**问题设定**：训练智能体在环境里多轮行动，目标是把任务做成。OPD 是**训练信号**：教师逐 token 打分。两者可以组合（Agentic OPD），但不能互相替代。平时说的 Agentic RL 大多指用环境的结果奖励训练；OPD 进入智能体领域是比较新的方向。详见[Agentic RL 与 OPD](../basics/agentic-rl-vs-opd.md)。
 
 这一阶段分两步：
 

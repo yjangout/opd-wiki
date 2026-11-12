@@ -32,7 +32,7 @@
     | 单轮任务 | RLVR（如 DeepSeek-R1） | 推理 OPD（如 Thinking Machines、Qwen3） |
     | 多轮智能体 | Agentic RL 的主流做法 | Agentic OPD（较新的方向） |
     
-    常见的分工是：RL 负责产生能力（训出强教师），OPD 负责搬运和合并能力。见 [Agentic OPD](../frontier/agentic.md)。
+    常见的分工是：RL 负责产生能力（训出强教师），OPD 负责搬运和合并能力。详见 [Agentic RL 与 OPD](../basics/agentic-rl-vs-opd.md)。
 
 ??? question "GRPO 和 OPD 的训练数据有什么区别？"
     两者的数据集里基本都只有题目，回答是训练时由学生现场生成的。区别在于：GRPO 还要标准答案或判分规则，每条回答得到一个分数；OPD 不需要答案，但需要部署一个教师，每个 token 得到一个分数。见[三种方法的数据长什么样](../basics/data-formats.md)。

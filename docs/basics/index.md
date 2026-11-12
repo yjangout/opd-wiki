@@ -12,5 +12,6 @@
 | [RL 与 GRPO](grpo.md) | 策略梯度、PPO、GRPO；稀疏奖励与信用分配 |
 | [为什么需要 OPD](why-opd.md) | 三者对比、DAgger 类比、信息量、发展脉络 |
 | [三种方法的数据长什么样](data-formats.md) | 用同一道题和同一个工具调用任务，对比 SFT、GRPO、OPD 的训练数据 |
+| [Agentic RL 与 OPD](agentic-rl-vs-opd.md) | 两者不在一个维度：一个是问题设定，一个是训练信号；怎样组合、怎样分工 |
 
 如果你已经熟悉 SFT 和 GRPO，可以直接跳到[为什么需要 OPD](why-opd.md)。
